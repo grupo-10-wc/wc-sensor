@@ -44,7 +44,6 @@ class SimuladorSensor:
         return valor_base  # Sem alerta
 
     def shelly_em(self):
-        np.random.seed(42)
         timestamps = self._generate_timestamps()
         payload = []
 
@@ -67,7 +66,6 @@ class SimuladorSensor:
         return payload
 
     def sonoff_pow_r3(self):
-        np.random.seed(42)
         timestamps = self._generate_timestamps()
         payload = []
 
@@ -90,7 +88,6 @@ class SimuladorSensor:
         return payload
 
     def pzem_004t(self):
-        np.random.seed(42)
         timestamps = self._generate_timestamps()
         payload = []
 
@@ -113,31 +110,42 @@ class SimuladorSensor:
         return payload
 
     def fluke_1735(self):
-        np.random.seed(42)
+        def calcular_fator_potencia(tensao, corrente, angulo_fase):
+            angulo_fase_rad = np.radians(angulo_fase)
+            potencia_ativa = tensao * corrente * np.cos(angulo_fase_rad)
+            potencia_aparente = tensao * corrente
+            return potencia_ativa / potencia_aparente
         timestamps = self._generate_timestamps()
         payload = []
+        ruido_tensao = np.random.normal(0, 1, self.n_dados)
+        ruido_corrente = np.random.normal(0, 0.5, self.n_dados)
 
+        window = int(self.n_dados / 10 / 2)
+        ruido_tensao = np.convolve(ruido_tensao, np.ones(window)/window, mode='same')
+        ruido_corrente = np.convolve(ruido_corrente, np.ones(window)/window, mode='same')
+
+        tensoes = 220 + ruido_tensao * 5
+        correntes = 10 + ruido_corrente * 2
+
+        angulo_base = 23.07
+        ruido_angulo = np.random.normal(0, 20, self.n_dados)
+        ruido_angulo = np.convolve(ruido_angulo, np.ones(window)/window, mode='same')
+        angulos_fase = angulo_base + ruido_angulo
+
+        fatores_potencia = [round(float(calcular_fator_potencia(V, I, ang)), 5) 
+                        for V, I, ang in zip(tensoes, correntes, angulos_fase)]
+        device = f'Ar Condicionado{randint(1, 9999):04d}'
         for i in range(self.n_dados):
-            tensao = 220 + np.random.normal(0, 1)
-            corrente = 10 + np.random.normal(0, 0.5)
-            angulo_fase = 23.07 + np.random.normal(0, 20)
-
-            tensao = self._apply_alerta(tensao)
-            corrente = self._apply_alerta(corrente)
-
-            fator_potencia = round(tensao * corrente * np.cos(np.radians(angulo_fase)) / (tensao * corrente), 5)
-
             record = {
                 'sensor_model': 'Fluke 1735',
                 'measure_unit': 'kW',
-                'device': f'Ar Condicionado {randint(1, 9999):04d}',
-                'location': 'Sala de Reuniões',
+                'device': device,
+                'location': 'Sala de reuniões',
                 'data_type': 'Fator de Potência',
-                'data': fator_potencia,
+                'data': fatores_potencia[i],
                 'created_at': timestamps[i]
             }
             payload.append(record)
-
         self.batch_insert(payload)
         return payload
 

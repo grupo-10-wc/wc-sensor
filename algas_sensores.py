@@ -1,25 +1,97 @@
-import sys
+import os
 import csv
 import time
+import json
+import pandas as pd
+from database import Database
 import matplotlib.pyplot as plt
 from memory_profiler import memory_usage
-import numpy as np
-import os
-import pandas as pd
 from simulador_sensores import SimuladorSensor
-from database import Database
-from azure.servicebus import ServiceBusClient, ServiceBusMessage
+from azure.iot.device import IoTHubDeviceClient, Message
 
 class AlgasBenchmark:
     def __init__(self):
         # Inicializa o banco de dados
+        os.mkdir('output') if not os.path.exists('output') else None
+        os.mkdir('output/plot') if not os.path.exists('output/plot') else None
+        os.mkdir('output/csv') if not os.path.exists('output/csv') else None
         self.db = Database(db_name="algas")
         self.db.create_table()
         self.sensores_table = self.db.sensores()
         self.teste_carga_table = self.db.teste_carga()
 
-        # Inicializa o simulador de sensores
         self.simulador = SimuladorSensor(self.db, n_dados=1000, intervalo_ms=60000, alerta="nenhum")
+        
+
+    def open_iot_hub_connection(self):
+        CONNECTION_STRING = "CONNECTION_STRING_DO_TRELLO_AQUI"
+        client = IoTHubDeviceClient.create_from_connection_string(CONNECTION_STRING)
+        client.connect()
+
+        return client
+
+
+    def send_iot_hub_message(self, client, message):
+        df = pd.DataFrame(message)
+        df['created_at'] = df['created_at'].dt.strftime("%Y-%m-%d %H:%M:%S")
+        json_str = json.dumps(df.to_dict('records'), indent=2)
+        print("\n\n\nenviado\n\n\n")
+        client.send_message(Message(json_str)) 
+
+
+    def gerar_grafico_dados_sensores(self, sensor_data, sensor_model, cenario, intervalo_agrupamento=10):
+        """
+        Gera um gráfico com os dados simulados de um sensor, aplicando suavização e agrupamento.
+
+        :param sensor_data: Lista de dicionários com os dados do sensor.
+        :param sensor_model: Nome do modelo do sensor.
+        :param cenario: Identificação do cenário.
+        :param intervalo_agrupamento: Número de pontos a serem agrupados para suavização.
+        """
+        # Extrai os dados para o gráfico
+        if sensor_model == "fluke_1735":
+            df = pd.DataFrame(sensor_data)
+            plt.figure(figsize=(12, 6))
+            plt.plot(df['created_at'], df['data'], 'b-', linewidth=2, label='Fator de Potência')
+            plt.axhline(y=0.92, color='r', linestyle='--', label='Fator de Potência de Referência (0.92)')
+            plt.grid(True)
+            plt.xlabel('Data/Hora')
+            plt.ylabel('Fator de Potência')
+            plt.title('Simulação do Fator de Potência com Variações Aleatórias')
+            plt.legend()
+            plt.ylim(0.70, .98)
+            grafico_filename = f'grafico_{sensor_model.lower().replace(" ", "_")}_cenario_{cenario}.png'
+            plt.savefig(f'output/plot/{grafico_filename}')
+        else:
+            timestamps = [record['created_at'] for record in sensor_data]
+            valores = [record['data'] for record in sensor_data]
+
+            # Agrupamento e suavização
+            agrupados_timestamps = []
+            agrupados_valores = []
+
+            for i in range(0, len(valores), intervalo_agrupamento):
+                agrupados_timestamps.append(timestamps[i])
+                agrupados_valores.append(sum(valores[i:i + intervalo_agrupamento]) / len(valores[i:i + intervalo_agrupamento]))
+
+            # Configura o gráfico
+            plt.figure(figsize=(10, 6))
+            plt.plot(agrupados_timestamps, agrupados_valores, label=f'{sensor_model}', color='blue', marker='o', markersize=4)
+            plt.title(f'Dados do Sensor {sensor_model} - Cenário {cenario}')
+            plt.xlabel('Data e Hora')
+            plt.ylabel('Valor')
+            plt.grid(True, linestyle='--', alpha=0.7)
+            plt.xticks(rotation=45)
+            plt.tight_layout()
+            plt.legend()
+
+            # Salva o gráfico como arquivo PNG
+            grafico_filename = f'grafico_{sensor_model.lower().replace(" ", "_")}_cenario_{cenario}.png'
+            plt.savefig(f'output/plot/{grafico_filename}', dpi=300, bbox_inches='tight')
+        plt.close()
+
+        print(f"Gráfico gerado: {grafico_filename}")
+
 
     def benchmark_sensor(self, sensor_func, cenario):
         """
@@ -33,8 +105,8 @@ class AlgasBenchmark:
         tempo = []
         memoria = []
 
-        csv_filename = f"cenario_{cenario}_benchmark.csv"
-        sensor_csv_filename = f"cenario_{cenario}_sensores.csv"
+        csv_filename = f"output/csv/cenario_{cenario}_benchmark.csv"
+        sensor_csv_filename = f"output/csv/cenario_{cenario}_sensores.csv"
 
         with open(csv_filename, 'w', newline='') as csvfile, open(sensor_csv_filename, 'w', newline='') as sensor_csvfile:
             benchmark_writer = csv.writer(csvfile)
@@ -73,12 +145,19 @@ class AlgasBenchmark:
                 print(f"Uso de memória: {mem_usage:.2f} MB\n")
 
         # Envia o CSV dos sensores para o Azure Service Bus
-        service_bus_connection_string = 'COLOCAR AQUI'
-        queue_name = "dados-sensores"
-        enviar_csv_para_service_bus(service_bus_connection_string, queue_name, sensor_csv_filename)
+        # service_bus_connection_string = 'COLOCAR AQUI'
+        # queue_name = "dados-sensores"
 
         # Gera o gráfico com os dados dos sensores
-        gerar_grafico_dados_sensores(dados, sensor_func.__name__, cenario)
+        try:
+            client = self.open_iot_hub_connection()
+            self.send_iot_hub_message(client, dados)
+            client.disconnect()
+        except ValueError as e:
+            print(f"\033[31m{e} COLOCAR A CONNECTION STRING QUE ESTA NO TRELLO AQUI!!!\033[0m")
+        except Exception as e:
+            print(f"Erro ao enviar dados para o Azure: {e}")
+        self.gerar_grafico_dados_sensores(dados, sensor_func.__name__, cenario)
 
         # Cria um DataFrame com os resultados do benchmark
         df_results = pd.DataFrame({
@@ -89,8 +168,9 @@ class AlgasBenchmark:
         })
 
         return df_results
-    
-    def main(self):
+
+
+    def run(self):
         cenarios = [
             {"cenario": 1, "sensor_func": self.simulador.shelly_em},
             {"cenario": 2, "sensor_func": self.simulador.sonoff_pow_r3},
@@ -130,83 +210,12 @@ class AlgasBenchmark:
         ax_mem_blocos.legend()
 
         # Salva os gráficos
-        fig_tempo_blocos.savefig('benchmark_tempo.png', dpi=300, bbox_inches='tight')
-        fig_mem_blocos.savefig('benchmark_memoria.png', dpi=300, bbox_inches='tight')
+        fig_tempo_blocos.savefig('output/plot/benchmark_tempo.png', dpi=300, bbox_inches='tight')
+        fig_mem_blocos.savefig('output/plot/benchmark_memoria.png', dpi=300, bbox_inches='tight')
 
         print("Benchmarks concluídos e gráficos salvos.")
 
-def enviar_csv_para_service_bus(service_bus_connection_string, queue_name, csv_filename):
-    """
-    Envia um arquivo CSV como mensagem para o Azure Service Bus.
-
-    :param service_bus_connection_string: Connection string do Azure Service Bus.
-    :param queue_name: Nome da fila no Service Bus.
-    :param csv_filename: Nome do arquivo CSV a ser enviado.
-    """
-    try:
-        # Conecta ao Service Bus
-        servicebus_client = ServiceBusClient.from_connection_string(conn_str=service_bus_connection_string, logging_enable=True)
-
-        with servicebus_client:
-            sender = servicebus_client.get_queue_sender(queue_name=queue_name)
-
-            with sender:
-                # Lê o conteúdo do arquivo CSV
-                with open(csv_filename, "r") as file:
-                    csv_content = file.read()
-
-                # Cria a mensagem com o conteúdo do CSV
-                message = ServiceBusMessage(csv_content)
-
-                # Envia a mensagem para a fila
-                sender.send_messages(message)
-
-                print(f"Arquivo {csv_filename} enviado com sucesso para a fila {queue_name} no Service Bus.")
-
-    except Exception as e:
-        print(f"Erro ao enviar o arquivo para o Azure Service Bus: {e}")
-
-import matplotlib.pyplot as plt
-
-def gerar_grafico_dados_sensores(sensor_data, sensor_model, cenario, intervalo_agrupamento=10):
-    """
-    Gera um gráfico com os dados simulados de um sensor, aplicando suavização e agrupamento.
-
-    :param sensor_data: Lista de dicionários com os dados do sensor.
-    :param sensor_model: Nome do modelo do sensor.
-    :param cenario: Identificação do cenário.
-    :param intervalo_agrupamento: Número de pontos a serem agrupados para suavização.
-    """
-    # Extrai os dados para o gráfico
-    timestamps = [record['created_at'] for record in sensor_data]
-    valores = [record['data'] for record in sensor_data]
-
-    # Agrupamento e suavização
-    agrupados_timestamps = []
-    agrupados_valores = []
-
-    for i in range(0, len(valores), intervalo_agrupamento):
-        agrupados_timestamps.append(timestamps[i])
-        agrupados_valores.append(sum(valores[i:i + intervalo_agrupamento]) / len(valores[i:i + intervalo_agrupamento]))
-
-    # Configura o gráfico
-    plt.figure(figsize=(10, 6))
-    plt.plot(agrupados_timestamps, agrupados_valores, label=f'{sensor_model}', color='blue', marker='o', markersize=4)
-    plt.title(f'Dados do Sensor {sensor_model} - Cenário {cenario}')
-    plt.xlabel('Data e Hora')
-    plt.ylabel('Valor')
-    plt.grid(True, linestyle='--', alpha=0.7)
-    plt.xticks(rotation=45)
-    plt.tight_layout()
-    plt.legend()
-
-    # Salva o gráfico como arquivo PNG
-    grafico_filename = f'grafico_{sensor_model.lower().replace(" ", "_")}_cenario_{cenario}.png'
-    plt.savefig(grafico_filename, dpi=300, bbox_inches='tight')
-    plt.close()
-
-    print(f"Gráfico gerado: {grafico_filename}")
 
 if __name__ == "__main__":
     benchmark = AlgasBenchmark()
-    benchmark.main()
+    benchmark.run()
