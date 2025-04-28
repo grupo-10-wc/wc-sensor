@@ -176,6 +176,7 @@ class AlgasBenchmark:
             {"cenario": 2, "sensor_func": self.simulador.sonoff_pow_r3},
             {"cenario": 3, "sensor_func": self.simulador.pzem_004t},
             {"cenario": 4, "sensor_func": self.simulador.fluke_1735},
+            {"cenario": 5, "sensor_func": self.simulador.hms_m}
         ]
 
         fig_tempo_blocos, ax_tempo_blocos = plt.subplots(figsize=(10, 6))

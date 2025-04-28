@@ -108,6 +108,28 @@ class SimuladorSensor:
 
         self.batch_insert(payload)
         return payload
+    
+    def hms_m(self):
+        timestamps = self._generate_timestamps()
+        payload = []
+
+        for i in range(self.n_dados):
+            temperature = 25 + np.random.normal(0, 2)  # Temperatura média de 25°C com desvio padrão de 2
+            temperature = self._apply_alerta(temperature)
+
+            record = {
+                'sensor_model': 'HMS-M',
+                'measure_unit': '°C',
+                'device': f'HMS_{randint(1, 9999):04d}',
+                'location': 'Instalação',
+                'data_type': 'Temperatura',
+                'data': round(temperature, 2),
+                'created_at': timestamps[i]
+            }
+            payload.append(record)
+
+        self.batch_insert(payload)
+        return payload
 
     def fluke_1735(self):
         def calcular_fator_potencia(tensao, corrente, angulo_fase):
