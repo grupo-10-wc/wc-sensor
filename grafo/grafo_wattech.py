@@ -5,21 +5,21 @@ G = nx.DiGraph()
 
 G.add_node("Shelly EM\n(Consumo total)")
 G.add_node("Sonoff POW R3\n(Consumo individual)")
-G.add_node("HMS M1c1\n(Temperatura)")
+G.add_node("HMS M21\n(Temperatura)")
 G.add_node("CT Clamp\n(Corrente)")
 G.add_node("PZEM-004T\n(Fator de Potência)")
 G.add_node("Fluke 1735\n(Potência)")
 
 G.add_edges_from([
     ("Shelly EM\n(Consumo total)", "Sonoff POW R3\n(Consumo individual)"),
-    ("HMS M1c1\n(Temperatura)", "CT Clamp\n(Corrente)"),
-    ("HMS M1c1\n(Temperatura)", "Shelly EM\n(Consumo total)"),
+    ("HMS M21\n(Temperatura)", "CT Clamp\n(Corrente)"),
+    ("HMS M21\n(Temperatura)", "Shelly EM\n(Consumo total)"),
     ("CT Clamp\n(Corrente)", "PZEM-004T\n(Fator de Potência)"),
     ("CT Clamp\n(Corrente)", "Fluke 1735\n(Potência)"),
     ("CT Clamp\n(Corrente)", "Sonoff POW R3\n(Consumo individual)"),
     ("PZEM-004T\n(Fator de Potência)", "Fluke 1735\n(Potência)"),
     ("PZEM-004T\n(Fator de Potência)", "CT Clamp\n(Corrente)"),
-    ("Fluke 1735\n(Potência)", "HMS M1c1\n(Temperatura)"),
+    ("Fluke 1735\n(Potência)", "HMS M21\n(Temperatura)"),
 ])
 
 plt.figure(figsize=(12, 8))
