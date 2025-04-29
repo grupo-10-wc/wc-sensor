@@ -10,7 +10,6 @@ G.add_node("CT Clamp\n(Corrente)")
 G.add_node("PZEM-004T\n(Fator de Potência)")
 G.add_node("Fluke 1735\n(Potência)")
 
-# Adiciona as arestas (comunicação)
 G.add_edges_from([
     ("Shelly EM\n(Consumo total)", "Sonoff POW R3\n(Consumo individual)"),
     ("HMS M1c1\n(Temperatura)", "CT Clamp\n(Corrente)"),
@@ -23,9 +22,8 @@ G.add_edges_from([
     ("Fluke 1735\n(Potência)", "HMS M1c1\n(Temperatura)"),
 ])
 
-# Define layout e desenha o grafo
 plt.figure(figsize=(12, 8))
-pos = nx.spring_layout(G, seed=42)  # Layout com espaçamento automático
+pos = nx.spring_layout(G, seed=42)
 nx.draw(G, pos, with_labels=True, node_color='lightblue', node_size=3500, font_size=10, arrows=True)
 plt.title("Grafo de Comunicação entre Sensores da Rede Elétrica")
 plt.show()
