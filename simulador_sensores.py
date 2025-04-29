@@ -109,7 +109,7 @@ class SimuladorSensor:
         self.batch_insert(payload)
         return payload
     
-    def hms_m(self):
+    def hms_m21(self):
         timestamps = self._generate_timestamps()
         payload = []
 
@@ -118,10 +118,10 @@ class SimuladorSensor:
             temperature = self._apply_alerta(temperature)
 
             record = {
-                'sensor_model': 'HMS-M',
-                'measure_unit': '°C',
+                'sensor_model': 'hms_m21',
+                'measure_unit': 'C',
                 'device': f'HMS_{randint(1, 9999):04d}',
-                'location': 'Instalação',
+                'location': 'Quadro de Energia',
                 'data_type': 'Temperatura',
                 'data': round(temperature, 2),
                 'created_at': timestamps[i]
