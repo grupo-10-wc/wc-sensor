@@ -218,7 +218,7 @@ class AlgasBenchmark:
             self.send_iot_hub_message(client, dados)
             client.disconnect()
         except ValueError as e:
-            print(f"\033[31m{e} COLOCAR A CONNECTION STRING QUE ESTA NO TRELLO AQUI!!!\033[0m")
+            print(f"\033[31m{e} sem acesso a Azure !!!\033[0m")
         except Exception as e:
             print(f"Erro ao enviar dados para o Azure: {e}")
         self.gerar_grafico_dados_sensores(dados, sensor_func.__name__, cenario)
