@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 from memory_profiler import memory_usage
 from simulador_sensores import SimuladorSensor
 from azure.iot.device import IoTHubDeviceClient, Message
+import boto3
 
 class AlgasBenchmark:
     def __init__(self):
@@ -232,6 +233,24 @@ class AlgasBenchmark:
 
         return df_results
 
+    def enviar_csv_para_s3(self, bucket_name='terraform-20250429234641902400000001', prefixo='csv/'):        
+        s3 = boto3.client('s3')
+        folder_path = 'output/csv'
+
+        if not os.path.exists(folder_path):
+            print(f"Pasta {folder_path} não existe.")
+            return
+
+        for filename in os.listdir(folder_path):
+            if filename.endswith(".csv"):
+                local_path = os.path.join(folder_path, filename)
+                s3_key = f"{prefixo}{filename}"
+                try:
+                    s3.upload_file(local_path, bucket_name, s3_key)
+                    print(f"Arquivo enviado para S3: {s3_key}")
+                except Exception as e:
+                    print(f"Erro ao enviar {filename} para S3: {e}")
+
 
     def run(self):
         cenarios = [
@@ -281,6 +300,8 @@ class AlgasBenchmark:
         print("Benchmarks concluídos e gráficos salvos.")
 
 
+
 if __name__ == "__main__":
     benchmark = AlgasBenchmark()
     benchmark.run()
+    benchmark.enviar_csv_para_s3()
