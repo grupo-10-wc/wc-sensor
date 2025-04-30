@@ -94,6 +94,37 @@ class AlgasBenchmark:
 
             grafico_filename = f'grafico_{sensor_model.lower().replace(" ", "_")}_cenario_{cenario}.png'
             plt.savefig(f'output/plot/{grafico_filename}', dpi=300, bbox_inches='tight')
+
+        elif sensor_model == "ct_clamp":
+            timestamps = [record['created_at'] for record in sensor_data]
+            valores = [record['data'] for record in sensor_data]
+
+            agrupados_timestamps = []
+            agrupados_valores = []
+
+            for i in range(0, len(valores), intervalo_agrupamento):
+                agrupados_timestamps.append(timestamps[i])
+                agrupados_valores.append(sum(valores[i:i + intervalo_agrupamento]) / len(valores[i:i + intervalo_agrupamento]))
+
+            
+            plt.figure(figsize=(10, 6))
+            plt.plot(agrupados_timestamps, agrupados_valores, label=f'{sensor_model}', color='blue', marker='o', markersize=4)
+
+            plt.axhline(y=10, color='red', linestyle='-', linewidth=1.5, label='Corrente máxima')
+
+            plt.axhline(y=-2, color='orange', linestyle='--', linewidth=1.5, label='Corrente mínima')
+
+            plt.title(f'Dados do Sensor {sensor_model} - Cenário {cenario} - Quadro de Energia')
+            plt.xlabel('Data e Hora')
+            plt.ylabel('Valor')
+            plt.grid(True, linestyle='--', alpha=0.7)
+            plt.xticks(rotation=45)
+            plt.tight_layout()
+            plt.legend(loc='lower right')
+
+            grafico_filename = f'grafico_{sensor_model.lower().replace(" ", "_")}_cenario_{cenario}.png'
+            plt.savefig(f'output/plot/{grafico_filename}', dpi=300, bbox_inches='tight')
+
         else:
             timestamps = [record['created_at'] for record in sensor_data]
             valores = [record['data'] for record in sensor_data]
@@ -208,7 +239,8 @@ class AlgasBenchmark:
             {"cenario": 2, "sensor_func": self.simulador.sonoff_pow_r3},
             {"cenario": 3, "sensor_func": self.simulador.pzem_004t},
             {"cenario": 4, "sensor_func": self.simulador.fluke_1735},
-            {"cenario": 5, "sensor_func": self.simulador.hms_m21}
+            {"cenario": 5, "sensor_func": self.simulador.hms_m21},
+            {"cenario": 6, "sensor_func": self.simulador.ct_clamp}
         ]
 
         fig_tempo_blocos, ax_tempo_blocos = plt.subplots(figsize=(10, 6))

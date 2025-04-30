@@ -170,6 +170,66 @@ class SimuladorSensor:
             payload.append(record)
         self.batch_insert(payload)
         return payload
+    
+    def ct_clamp(self):
+        alert_threshold: float = 7.0
+        alert_threshold_low: float = 3.0
+        np.random.seed(2025)
+        
+        ruido_corrente = np.random.normal(0, 30, self.n_dados)
+        window = int(self.n_dados / 10 / 2)
+        ruido_corrente = np.convolve(ruido_corrente, np.ones(window)/window, mode='same')
+        
+        correntes = 5 + ruido_corrente
+        device = f'CT Clamp {randint(1, 9999):04d}'
+        
+        payload = []
+        start_date = datetime.datetime.now()
+        
+        for i in range(len(correntes)):
+            record = {
+                'sensor_model': 'ct_clamp',
+                'measure_unit': 'A',
+                'device': device,
+                'location': 'Quadro de Energia',
+                'data_type': 'Corrente Elétrica',
+                'data': round(float(correntes[i]), 5),
+                'created_at': start_date + datetime.timedelta(minutes=i)
+            }
+            payload.append(record)
+        
+        self.batch_insert(payload)
+        return payload
+        
+        # result = self.get_data_by_device(device)
+        
+        # timestamps = [record[7] for record in result]
+        # corrente_values = [record[6] for record in result]
+        
+        # alert_times = [timestamps[i] for i in range(len(corrente_values)) if corrente_values[i] > alert_threshold]
+        # alert_values = [corrente_values[i] for i in range(len(corrente_values)) if corrente_values[i] > alert_threshold]
+
+        # alert_times_low = [timestamps[i] for i in range(len(corrente_values)) if corrente_values[i] < alert_threshold_low]
+        # alert_values_low = [corrente_values[i] for i in range(len(corrente_values)) if corrente_values[i] < alert_threshold_low]
+        
+        
+        # plt.figure(figsize=(10, 6))
+        # plt.plot(timestamps, corrente_values, label='Corrente Elétrica (A)', color='blue')
+        
+        # plt.scatter(alert_times, alert_values, color='red', label='Picos (Alertas)', zorder=5)
+
+        # plt.scatter(alert_times_low, alert_values_low, color='orange', label='Corrente Abaixo do Normal', zorder=5)
+        
+        # plt.title('Corrente Elétrica ao Longo do Tempo')
+        # plt.xlabel('Data e Hora')
+        # plt.ylabel('Corrente (A)')
+        # plt.grid(True)
+        # plt.xticks(rotation=45)
+        # plt.tight_layout()
+        # plt.legend()
+        # plt.savefig('corrente_eletrica.png')
+
+        # return {'status': 'success', 'device': device, 'n_samples': len(payload), 'alerts': len(alert_times)}
 
     def plot_dados(self, dados, titulo, eixo_x, eixo_y, filename):
         timestamps = [record['created_at'] for record in dados]
