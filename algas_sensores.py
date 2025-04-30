@@ -272,4 +272,4 @@ class AlgasBenchmark:
 if __name__ == "__main__":
     benchmark = AlgasBenchmark()
     benchmark.run()
-    enviar_csvs_para_s3()
+    benchmark.enviar_csv_para_s3()
