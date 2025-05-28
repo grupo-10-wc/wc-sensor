@@ -1,14 +1,23 @@
 import os
+import io
 import csv
+import pdb
 import time
 import json
 import pandas as pd
 from database import Database
+from dotenv import load_dotenv
 import matplotlib.pyplot as plt
 from memory_profiler import memory_usage
 from simulador_sensores import SimuladorSensor
 from azure.iot.device import IoTHubDeviceClient, Message
+from azure.storage.blob import BlobServiceClient
+
 import boto3
+
+
+load_dotenv()
+
 
 class AlgasBenchmark:
     def __init__(self):
@@ -20,20 +29,45 @@ class AlgasBenchmark:
         self.db.create_table()
         self.sensores_table = self.db.sensores()
         self.teste_carga_table = self.db.teste_carga()
-
+        self.connection_string = os.getenv("CONNECTION_STRING")
         self.simulador = SimuladorSensor(self.db, n_dados=1000, intervalo_ms=60000, alerta="nenhum")
         
 
     def open_iot_hub_connection(self):
-        CONNECTION_STRING = "CONNECTION_STRING_DO_TRELLO_AQUI"
-        client = IoTHubDeviceClient.create_from_connection_string(CONNECTION_STRING)
+        client = IoTHubDeviceClient.create_from_connection_string(self.connection_string)
         client.connect()
-
+        client.get_storage_info_for_blob()
         return client
 
-
-    def send_iot_hub_message(self, client, message):
-        df = pd.DataFrame(message)
+    def send_to_blob(self, client:IoTHubDeviceClient, records:list[dict]):
+        df = pd.DataFrame(records)
+        df['created_at'] = df['created_at'].dt.strftime("%Y-%m-%d %H:%M:%S")
+        json_str = json.dumps(df.to_dict('records'), indent=2)
+        blob_name = "blobiothub02231023"
+        storage_info = client.get_storage_info_for_blob(blob_name)
+        
+        
+        blob_service_client = BlobServiceClient(
+            account_url=f"https://{storage_info.get('hostName', 'your-storage-account.blob.core.windows.net')}"
+        )
+        
+        blob_client = blob_service_client.get_blob_client(
+            container=storage_info.get('containerName', 'rawdata'),
+            blob=blob_name
+        )
+        
+        # Upload do arquivo
+        with open("output/data.parquet", 'rb') as data:
+            blob_client.upload_blob(data, overwrite=True)
+        
+        # Notifica o IoT Hub sobre o upload
+        
+        client.disconnect()
+        
+        print(f"Arquivo {blob_name} enviado com sucesso para o Blob Storage!")
+        
+    def send_iot_hub_message(self, client:IoTHubDeviceClient, records:list[dict]):
+        df = pd.DataFrame(records)
         df['created_at'] = df['created_at'].dt.strftime("%Y-%m-%d %H:%M:%S")
         json_str = json.dumps(df.to_dict('records'), indent=2)
         print("\n\n\nenviado\n\n\n")
@@ -213,14 +247,7 @@ class AlgasBenchmark:
         # queue_name = "dados-sensores"
 
         # Gera o gráfico com os dados dos sensores
-        try:
-            client = self.open_iot_hub_connection()
-            self.send_iot_hub_message(client, dados)
-            client.disconnect()
-        except ValueError as e:
-            print(f"\033[31m{e} sem acesso a Azure !!!\033[0m")
-        except Exception as e:
-            print(f"Erro ao enviar dados para o Azure: {e}")
+
         self.gerar_grafico_dados_sensores(dados, sensor_func.__name__, cenario)
 
         # Cria um DataFrame com os resultados do benchmark
@@ -231,7 +258,7 @@ class AlgasBenchmark:
             'cenario': cenario
         })
 
-        return df_results
+        return df_results, dados
 
     def enviar_csv_para_s3(self, bucket_name='terraform-20250429234641902400000001', prefixo='csv/'):        
         s3 = boto3.client('s3')
@@ -271,19 +298,30 @@ class AlgasBenchmark:
         ax_tempo_blocos.set_yscale('log')
         ax_mem_blocos.set_yscale('log')
 
-        df = pd.DataFrame()
+        df_benchmark = pd.DataFrame()
+        df_dados = pd.DataFrame()
 
         for cenario in cenarios:
             print(f"Executando benchmark para o cenário {cenario['cenario']}...")
-            df_cenario = self.benchmark_sensor(cenario["sensor_func"], cenario["cenario"])
-            df = pd.concat([df, df_cenario], ignore_index=True)
+            df_cenario, dados = self.benchmark_sensor(cenario["sensor_func"], cenario["cenario"])
+            df_dados = pd.concat([df_dados, pd.DataFrame(dados)])
+            df_benchmark = pd.concat([df_benchmark, df_cenario], ignore_index=True)
 
             ax_tempo_blocos.plot(df_cenario['tempo'], df_cenario['blocos'], label=f'Cenário {cenario["cenario"]}', marker='o')
             ax_mem_blocos.plot(df_cenario['memoria'], df_cenario['blocos'], label=f'Cenário {cenario["cenario"]}', marker='o')
 
         # Salva os resultados do benchmark no banco de dados
-        self.db.db_execute(self.teste_carga_table.insert().values(df.to_dict("records")), commit=True)
-
+        self.db.db_execute(self.teste_carga_table.insert().values(df_benchmark.to_dict("records")), commit=True)
+        df_dados.to_csv("output/dados.csv", index=False)
+        try:
+            client = self.open_iot_hub_connection()
+            self.send_iot_hub_message(client, df_dados.to_dict("records"))
+            print("\033[32mDados enviados para o Azure com sucesso!\033[0m")
+            client.disconnect()
+        except ValueError as e:
+            print(f"\033[31m{e} sem acesso a Azure !!!\033[0m")
+        except Exception as e:
+            print(f"Erro ao enviar dados para o Azure: {e}")
         # Configura os gráficos
         ax_tempo_blocos.set_xlabel('Tempo de execução (segundos)')
         ax_tempo_blocos.set_ylabel('Blocos processados')
