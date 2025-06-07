@@ -27,7 +27,7 @@ class SimuladorSensor:
             self.db.db_execute(self.sensores.insert().values(batch), commit=True)
 
     def _generate_timestamps(self):
-        start_time = datetime.datetime.now()
+        start_time = datetime.datetime.now() - datetime.timedelta(days=60)
         return [start_time + datetime.timedelta(milliseconds=i * self.intervalo_ms) for i in range(self.n_dados)]
 
     def _apply_alerta(self, valor_base):
@@ -184,7 +184,7 @@ class SimuladorSensor:
         device = f'CT Clamp {randint(1, 9999):04d}'
         
         payload = []
-        start_date = datetime.datetime.now()
+        start_date = datetime.datetime.now() - datetime.timedelta(days=60)
         
         for i in range(len(correntes)):
             record = {

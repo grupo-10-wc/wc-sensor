@@ -4,6 +4,7 @@ import csv
 import pdb
 import time
 import json
+from typing import Callable 
 import pandas as pd
 from database import Database
 from dotenv import load_dotenv
@@ -30,7 +31,7 @@ class AlgasBenchmark:
         self.sensores_table = self.db.sensores()
         self.teste_carga_table = self.db.teste_carga()
         self.connection_string = os.getenv("CONNECTION_STRING")
-        self.simulador = SimuladorSensor(self.db, n_dados=1000, intervalo_ms=60000, alerta="nenhum")
+        self.simulador = SimuladorSensor(self.db, n_dados=500, intervalo_ms=1000*60*30, alerta="nenhum")
         
 
     def open_iot_hub_connection(self):
@@ -191,10 +192,10 @@ class AlgasBenchmark:
         print(f"Gráfico gerado: {grafico_filename}")
 
 
-    def benchmark_sensor(self, sensor_func, cenario):
+    def benchmark_sensor(self, sensor_func: Callable, cenario: int):
         """
         Executa o benchmark para uma função de simulação de sensor.
-
+ 
         :param sensor_func: Função de simulação de sensor a ser testada.
         :param cenario: Identificação do cenário.
         :return: DataFrame com os resultados do benchmark.
@@ -203,21 +204,22 @@ class AlgasBenchmark:
         tempo = []
         memoria = []
 
-        csv_filename = f"output/csv/cenario_{cenario}_benchmark.csv"
-        sensor_csv_filename = f"output/csv/cenario_{cenario}_sensores.csv"
+        # csv_filename = f"output/csv/cenario_{sensor_func.__name__}_benchmark.csv"
+        sensor_csv_filename = f"output/csv/cenario_{sensor_func.__name__}_sensores.csv"
 
-        with open(csv_filename, 'w', newline='') as csvfile, open(sensor_csv_filename, 'w', newline='') as sensor_csvfile:
-            benchmark_writer = csv.writer(csvfile)
-            benchmark_writer.writerow(['tamanho_bloco', 'duracao', 'memoria_mb'])
+        # open(csv_filename, 'w', newline='') as csvfile, 
+        with open(sensor_csv_filename, 'w', newline='') as sensor_csvfile:
+            # benchmark_writer = csv.writer(csvfile)
+            # benchmark_writer.writerow(['tamanho_bloco', 'duracao', 'memoria_mb'])
 
             sensor_writer = csv.writer(sensor_csvfile)
             sensor_writer.writerow(['sensor_model', 'measure_unit', 'device', 'location', 'data_type', 'data', 'created_at'])
 
-            for block_size in range(100, 1100, 200):  # Ajuste o intervalo conforme necessário
+            for block_size in range(1):  # Ajuste o intervalo conforme necessário
                 print(f"Iniciando simulação para {block_size} dados...")
 
                 # Atualiza o número de dados no simulador
-                self.simulador.n_dados = block_size
+                # self.simulador.n_dados = block_size
 
                 def processar_sensor():
                     start_time = time.time()
@@ -228,19 +230,19 @@ class AlgasBenchmark:
                 mem_usage, (dados, duration) = memory_usage((processar_sensor, ()), max_usage=True, retval=True)
                 duration = float(f"{duration:.2f}")
 
-                blocos.append(block_size)
-                tempo.append(duration)
-                memoria.append(mem_usage)
+                # blocos.append(block_size)
+                # tempo.append(duration)
+                # memoria.append(mem_usage)
 
                 # Salva os dados dos sensores no CSV
                 for record in dados:
                     sensor_writer.writerow(record.values())
 
                 # Salva os resultados do benchmark no CSV
-                benchmark_writer.writerow([block_size, duration, mem_usage])
+                # benchmark_writer.writerow([block_size, duration, mem_usage])
 
                 print(f"Simulação para {block_size} dados concluída em {duration} segundos.")
-                print(f"Uso de memória: {mem_usage:.2f} MB\n")
+                # print(f"Uso de memória: {mem_usage:.2f} MB\n")
 
         # Envia o CSV dos sensores para o Azure Service Bus
         # service_bus_connection_string = 'COLOCAR AQUI'
@@ -248,7 +250,7 @@ class AlgasBenchmark:
 
         # Gera o gráfico com os dados dos sensores
 
-        self.gerar_grafico_dados_sensores(dados, sensor_func.__name__, cenario)
+        # self.gerar_grafico_dados_sensores(dados, sensor_func.__name__, cenario)
 
         # Cria um DataFrame com os resultados do benchmark
         df_results = pd.DataFrame({
@@ -289,30 +291,30 @@ class AlgasBenchmark:
             {"cenario": 6, "sensor_func": self.simulador.ct_clamp}
         ]
 
-        fig_tempo_blocos, ax_tempo_blocos = plt.subplots(figsize=(10, 6))
-        fig_mem_blocos, ax_mem_blocos = plt.subplots(figsize=(10, 6))
+        # fig_tempo_blocos, ax_tempo_blocos = plt.subplots(figsize=(10, 6))
+        # fig_mem_blocos, ax_mem_blocos = plt.subplots(figsize=(10, 6))
 
-        ax_tempo_blocos.grid(True, linestyle='--', alpha=0.7)
-        ax_mem_blocos.grid(True, linestyle='--', alpha=0.7)
+        # ax_tempo_blocos.grid(True, linestyle='--', alpha=0.7)
+        # ax_mem_blocos.grid(True, linestyle='--', alpha=0.7)
 
-        ax_tempo_blocos.set_yscale('log')
-        ax_mem_blocos.set_yscale('log')
+        # ax_tempo_blocos.set_yscale('log')
+        # ax_mem_blocos.set_yscale('log')
 
-        df_benchmark = pd.DataFrame()
+        # df_benchmark = pd.DataFrame()
         df_dados = pd.DataFrame()
 
         for cenario in cenarios:
             print(f"Executando benchmark para o cenário {cenario['cenario']}...")
             df_cenario, dados = self.benchmark_sensor(cenario["sensor_func"], cenario["cenario"])
             df_dados = pd.concat([df_dados, pd.DataFrame(dados)])
-            df_benchmark = pd.concat([df_benchmark, df_cenario], ignore_index=True)
+            # df_benchmark = pd.concat([df_benchmark, df_cenario], ignore_index=True)
 
-            ax_tempo_blocos.plot(df_cenario['tempo'], df_cenario['blocos'], label=f'Cenário {cenario["cenario"]}', marker='o')
-            ax_mem_blocos.plot(df_cenario['memoria'], df_cenario['blocos'], label=f'Cenário {cenario["cenario"]}', marker='o')
+            # ax_tempo_blocos.plot(df_cenario['tempo'], df_cenario['blocos'], label=f'Cenário {cenario["cenario"]}', marker='o')
+            # ax_mem_blocos.plot(df_cenario['memoria'], df_cenario['blocos'], label=f'Cenário {cenario["cenario"]}', marker='o')
 
         # Salva os resultados do benchmark no banco de dados
-        self.db.db_execute(self.teste_carga_table.insert().values(df_benchmark.to_dict("records")), commit=True)
-        df_dados.to_csv("output/dados.csv", index=False)
+        # self.db.db_execute(self.teste_carga_table.insert().values(df_benchmark.to_dict("records")), commit=True)
+        df_dados.to_csv("output/csv/dados.csv", index=False)
         try:
             client = self.open_iot_hub_connection()
             self.send_iot_hub_message(client, df_dados.to_dict("records"))
@@ -323,19 +325,19 @@ class AlgasBenchmark:
         except Exception as e:
             print(f"Erro ao enviar dados para o Azure: {e}")
         # Configura os gráficos
-        ax_tempo_blocos.set_xlabel('Tempo de execução (segundos)')
-        ax_tempo_blocos.set_ylabel('Blocos processados')
-        ax_tempo_blocos.legend()
+        # ax_tempo_blocos.set_xlabel('Tempo de execução (segundos)')
+        # ax_tempo_blocos.set_ylabel('Blocos processados')
+        # ax_tempo_blocos.legend()
 
-        ax_mem_blocos.set_xlabel('Memória utilizada (MB)')
-        ax_mem_blocos.set_ylabel('Blocos processados')
-        ax_mem_blocos.legend()
+        # ax_mem_blocos.set_xlabel('Memória utilizada (MB)')
+        # ax_mem_blocos.set_ylabel('Blocos processados')
+        # ax_mem_blocos.legend()
 
-        # Salva os gráficos
-        fig_tempo_blocos.savefig('output/plot/benchmark_tempo.png', dpi=300, bbox_inches='tight')
-        fig_mem_blocos.savefig('output/plot/benchmark_memoria.png', dpi=300, bbox_inches='tight')
+        # # Salva os gráficos
+        # fig_tempo_blocos.savefig('output/plot/benchmark_tempo.png', dpi=300, bbox_inches='tight')
+        # fig_mem_blocos.savefig('output/plot/benchmark_memoria.png', dpi=300, bbox_inches='tight')
 
-        print("Benchmarks concluídos e gráficos salvos.")
+        # print("Benchmarks concluídos e gráficos salvos.")
 
 
 
