@@ -4,17 +4,17 @@ import csv
 import pdb
 import time
 import json
-from typing import Callable 
 import pandas as pd
+import matplotlib.pyplot as plt
+import boto3
+
+from typing import Callable 
 from database import Database
 from dotenv import load_dotenv
-import matplotlib.pyplot as plt
 from memory_profiler import memory_usage
 from simulador_sensores import SimuladorSensor
 from azure.iot.device import IoTHubDeviceClient, Message
 from azure.storage.blob import BlobServiceClient
-
-import boto3
 
 
 load_dotenv()
@@ -37,7 +37,7 @@ class AlgasBenchmark:
     def open_iot_hub_connection(self):
         client = IoTHubDeviceClient.create_from_connection_string(self.connection_string)
         client.connect()
-        client.get_storage_info_for_blob()
+        #client.get_storage_info_for_blob()
         return client
 
     def send_to_blob(self, client:IoTHubDeviceClient, records:list[dict]):
@@ -283,12 +283,12 @@ class AlgasBenchmark:
 
     def run(self):
         cenarios = [
-            {"cenario": 1, "sensor_func": self.simulador.shelly_em},
-            {"cenario": 2, "sensor_func": self.simulador.sonoff_pow_r3},
-            {"cenario": 3, "sensor_func": self.simulador.pzem_004t},
-            {"cenario": 4, "sensor_func": self.simulador.fluke_1735},
-            {"cenario": 5, "sensor_func": self.simulador.hms_m21},
-            {"cenario": 6, "sensor_func": self.simulador.ct_clamp}
+            {"cenario": 1, "sensor_func": self.simulador.shelly_em}
+            # {"cenario": 2, "sensor_func": self.simulador.sonoff_pow_r3},
+            # {"cenario": 3, "sensor_func": self.simulador.pzem_004t},
+            # {"cenario": 4, "sensor_func": self.simulador.fluke_1735},
+            # {"cenario": 5, "sensor_func": self.simulador.hms_m21},
+            # {"cenario": 6, "sensor_func": self.simulador.ct_clamp}
         ]
 
         # fig_tempo_blocos, ax_tempo_blocos = plt.subplots(figsize=(10, 6))
