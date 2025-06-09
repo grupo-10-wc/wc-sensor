@@ -6,6 +6,8 @@ import time
 import json
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
+import numpy as np
 import boto3
 
 from typing import Callable 
@@ -100,36 +102,47 @@ class AlgasBenchmark:
             plt.savefig(f'output/plot/{grafico_filename}')
         
         elif sensor_model == "hms_m21":
-            timestamps = [record['created_at'] for record in sensor_data]
-            valores = [record['data'] for record in sensor_data]
+            # Descobre todos os devices únicos
+            devices = sorted(set(record['device'] for record in sensor_data))
+            colors = cm.get_cmap('tab10', len(devices))
 
-            agrupados_timestamps = []
-            agrupados_valores = []
-
-            for i in range(0, len(valores), intervalo_agrupamento):
-                agrupados_timestamps.append(timestamps[i])
-                agrupados_valores.append(sum(valores[i:i + intervalo_agrupamento]) / len(valores[i:i + intervalo_agrupamento]))
-
-            
             plt.figure(figsize=(10, 6))
-            plt.plot(agrupados_timestamps, agrupados_valores, label=f'{sensor_model}', color='blue', marker='o', markersize=4)
 
+            for idx, device in enumerate(devices):
+                # Filtra os dados desse device
+                device_data = [record for record in sensor_data if record['device'] == device]
+                timestamps = [record['created_at'] for record in device_data]
+                valores = [record['data'] for record in device_data]
+
+                # Agrupamento e suavização
+                agrupados_timestamps = []
+                agrupados_valores = []
+                for i in range(0, len(valores), intervalo_agrupamento):
+                    agrupados_timestamps.append(timestamps[i])
+                    agrupados_valores.append(sum(valores[i:i + intervalo_agrupamento]) / len(valores[i:i + intervalo_agrupamento]))
+
+                # Plota a linha desse sensor
+                plt.plot(agrupados_timestamps, agrupados_valores, label=f'{device}', color=colors(idx), marker='o', markersize=4)
+
+            # Linhas de referência
             plt.axhline(y=40, color='red', linestyle='-', linewidth=1.5, label='Temperatura Máxima (40°C)')
             plt.axhline(y=-5, color='red', linestyle='-', linewidth=1.5, label='Temperatura Mínima (-5°C)')
-
             plt.axhline(y=30, color='orange', linestyle='--', linewidth=1.5, label='Temperatura Alta (30°C)')
             plt.axhline(y=5, color='orange', linestyle='--', linewidth=1.5, label='Temperatura Baixa (5°C)')
 
-            plt.title(f'Dados do Sensor {sensor_model} - Cenário {cenario} - Quadro de Energia')
+            plt.title(f'Dados dos Sensores {sensor_model} - Cenário {cenario} - Quadros de Energia')
             plt.xlabel('Data e Hora')
-            plt.ylabel('Valor')
+            plt.ylabel('Temperatura (°C)')
             plt.grid(True, linestyle='--', alpha=0.7)
             plt.xticks(rotation=45)
             plt.tight_layout()
             plt.legend(loc='lower right')
 
-            grafico_filename = f'grafico_{sensor_model.lower().replace(" ", "_")}_cenario_{cenario}.png'
+            grafico_filename = f"grafico_{sensor_model.lower().replace(' ', '_')}_cenario_{cenario}.png"
             plt.savefig(f'output/plot/{grafico_filename}', dpi=300, bbox_inches='tight')
+            plt.close()
+
+            print(f"Gráfico gerado: {grafico_filename}")
 
         elif sensor_model == "ct_clamp":
             timestamps = [record['created_at'] for record in sensor_data]
@@ -262,7 +275,7 @@ class AlgasBenchmark:
 
         return df_results, dados
 
-    def enviar_csv_para_s3(self, bucket_name='terraform-20250429234641902400000001', prefixo='csv/'):        
+    def enviar_csv_para_s3(self, bucket_name='', prefixo='csv/'):        
         s3 = boto3.client('s3')
         folder_path = 'output/csv'
 
@@ -283,12 +296,12 @@ class AlgasBenchmark:
 
     def run(self):
         cenarios = [
-            {"cenario": 1, "sensor_func": self.simulador.shelly_em}
-            # {"cenario": 2, "sensor_func": self.simulador.sonoff_pow_r3},
-            # {"cenario": 3, "sensor_func": self.simulador.pzem_004t},
-            # {"cenario": 4, "sensor_func": self.simulador.fluke_1735},
-            # {"cenario": 5, "sensor_func": self.simulador.hms_m21},
-            # {"cenario": 6, "sensor_func": self.simulador.ct_clamp}
+            {"cenario": 1, "sensor_func": self.simulador.shelly_em},
+            {"cenario": 2, "sensor_func": self.simulador.sonoff_pow_r3},
+            {"cenario": 3, "sensor_func": self.simulador.pzem_004t},
+            {"cenario": 4, "sensor_func": self.simulador.fluke_1735},
+            {"cenario": 5, "sensor_func": self.simulador.hms_m21},
+            {"cenario": 6, "sensor_func": self.simulador.ct_clamp}
         ]
 
         # fig_tempo_blocos, ax_tempo_blocos = plt.subplots(figsize=(10, 6))
