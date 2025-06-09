@@ -283,12 +283,12 @@ class AlgasBenchmark:
 
     def run(self):
         cenarios = [
-            {"cenario": 1, "sensor_func": self.simulador.shelly_em}
-            # {"cenario": 2, "sensor_func": self.simulador.sonoff_pow_r3},
-            # {"cenario": 3, "sensor_func": self.simulador.pzem_004t},
-            # {"cenario": 4, "sensor_func": self.simulador.fluke_1735},
-            # {"cenario": 5, "sensor_func": self.simulador.hms_m21},
-            # {"cenario": 6, "sensor_func": self.simulador.ct_clamp}
+            {"cenario": 1, "sensor_func": self.simulador.shelly_em},
+            {"cenario": 2, "sensor_func": self.simulador.sonoff_pow_r3},
+            {"cenario": 3, "sensor_func": self.simulador.pzem_004t},
+            {"cenario": 4, "sensor_func": self.simulador.fluke_1735},
+            {"cenario": 5, "sensor_func": self.simulador.hms_m21},
+            {"cenario": 6, "sensor_func": self.simulador.ct_clamp}
         ]
 
         # fig_tempo_blocos, ax_tempo_blocos = plt.subplots(figsize=(10, 6))
