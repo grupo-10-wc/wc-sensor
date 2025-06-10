@@ -40,33 +40,42 @@ class AlgasBenchmark:
         #client.get_storage_info_for_blob()
         return client
 
-    def send_to_blob(self, client:IoTHubDeviceClient, records:list[dict]):
-        df = pd.DataFrame(records)
-        df['created_at'] = df['created_at'].dt.strftime("%Y-%m-%d %H:%M:%S")
-        json_str = json.dumps(df.to_dict('records'), indent=2)
-        blob_name = "blobiothub02231023"
-        storage_info = client.get_storage_info_for_blob(blob_name)
-        
-        
-        blob_service_client = BlobServiceClient(
-            account_url=f"https://{storage_info.get('hostName', 'your-storage-account.blob.core.windows.net')}"
-        )
-        
-        blob_client = blob_service_client.get_blob_client(
-            container=storage_info.get('containerName', 'rawdata'),
-            blob=blob_name
-        )
-        
-        # Upload do arquivo
-        with open("output/data.parquet", 'rb') as data:
-            blob_client.upload_blob(data, overwrite=True)
-        
-        # Notifica o IoT Hub sobre o upload
-        
-        client.disconnect()
-        
-        print(f"Arquivo {blob_name} enviado com sucesso para o Blob Storage!")
-        
+    def send_to_blob(self, records: list[dict]):
+        try:
+            # Convert records to DataFrame
+            df = pd.DataFrame(records)
+            if 'created_at' in df.columns:
+                df['created_at'] = pd.to_datetime(df['created_at']).dt.strftime("%Y-%m-%d %H:%M:%S")
+            
+            # Create parquet file in memory
+            parquet_buffer = io.BytesIO()
+            df.to_parquet(parquet_buffer, index=False)
+            parquet_buffer.seek(0)
+            
+            blob_service_client = BlobServiceClient.from_connection_string(
+                os.getenv("AZURE_STORAGE_CONNECTION_STRING")
+            )
+            
+            timestamp = time.strftime("%Y%m%d%H%M%S")
+            blob_name = f"dados_{timestamp}.parquet"
+            container_name = "rawdata01"
+            
+            blob_client = blob_service_client.get_blob_client(
+                container=container_name, 
+                blob=blob_name
+            )
+            
+            blob_client.upload_blob(
+                data=parquet_buffer.getvalue(),
+                blob_type="BlockBlob",
+                overwrite=True
+            )
+            
+            print(f"\033[32mParquet file uploaded to blob storage: {blob_name}\033[0m")
+            
+        except Exception as e:
+            print(f"\033[31mError uploading parquet to blob storage: {e}\033[0m")
+
     def send_iot_hub_message(self, client:IoTHubDeviceClient, records:list[dict]):
         df = pd.DataFrame(records)
         df['created_at'] = df['created_at'].dt.strftime("%Y-%m-%d %H:%M:%S")
@@ -316,10 +325,10 @@ class AlgasBenchmark:
         # self.db.db_execute(self.teste_carga_table.insert().values(df_benchmark.to_dict("records")), commit=True)
         df_dados.to_csv("output/csv/dados.csv", index=False)
         try:
-            client = self.open_iot_hub_connection()
-            self.send_iot_hub_message(client, df_dados.to_dict("records"))
+            # client = self.open_iot_hub_connection()
+            self.send_to_blob(df_dados.to_dict("records"))
             print("\033[32mDados enviados para o Azure com sucesso!\033[0m")
-            client.disconnect()
+            # client.disconnect()
         except ValueError as e:
             print(f"\033[31m{e} sem acesso a Azure !!!\033[0m")
         except Exception as e:
