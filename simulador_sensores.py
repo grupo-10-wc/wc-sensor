@@ -110,23 +110,29 @@ class SimuladorSensor:
         return payload
     
     def hms_m21(self):
-        timestamps = self._generate_timestamps()
+        n_sensores = 5
         payload = []
 
-        for i in range(self.n_dados):
-            temperature = 25 + np.random.normal(0, 2)  # Temperatura média de 25°C com desvio padrão de 2
-            temperature = self._apply_alerta(temperature)
-
-            record = {
-                'sensor_model': 'hms_m21',
-                'measure_unit': 'C',
-                'device': f'HMS_{randint(1, 9999):04d}',
-                'location': 'Quadro de Energia',
-                'data_type': 'Temperatura',
-                'data': round(temperature, 2),
-                'created_at': timestamps[i]
-            }
-            payload.append(record)
+        for sensor_id in range(1, n_sensores + 1):
+            device = f'HMS_{sensor_id:04d}'
+            location = f'Quadro de Energia {sensor_id}'
+            timestamps = [
+                datetime.datetime.now() - datetime.timedelta(days=60) + datetime.timedelta(milliseconds=i * self.intervalo_ms)
+                for i in range(self.n_dados)
+            ]
+            for i in range(self.n_dados):
+                temperature = 25 + np.random.normal(0, 2)  # Temperatura média de 25°C com desvio padrão de 2
+                temperature = self._apply_alerta(temperature)
+                record = {
+                    'sensor_model': 'hms_m21',
+                    'measure_unit': 'C',
+                    'device': device,
+                    'location': location,
+                    'data_type': 'Temperatura',
+                    'data': round(temperature, 2),
+                    'created_at': timestamps[i]
+                }
+                payload.append(record)
 
         self.batch_insert(payload)
         return payload
