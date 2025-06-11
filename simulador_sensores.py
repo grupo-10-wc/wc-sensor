@@ -91,20 +91,51 @@ class SimuladorSensor:
         timestamps = self._generate_timestamps()
         payload = []
 
-        for i in range(self.n_dados):
-            voltage = 220 + np.random.normal(0, 1)
-            voltage = self._apply_alerta(voltage)
-
-            record = {
-                'sensor_model': 'PZEM-004T',
-                'measure_unit': 'V',
-                'device': f'PZEM_{randint(1, 9999):04d}',
-                'location': 'Instalação',
-                'data_type': 'Tensão',
-                'data': round(voltage, 5),
-                'created_at': timestamps[i]
-            }
-            payload.append(record)
+        i = 0
+        while i < self.n_dados:
+            # 95% dos casos: valores próximos de 220V (218-222V)
+            if np.random.rand() < 0.95:
+                voltage = 220 + np.random.normal(0, 1.2)
+                voltage = np.clip(voltage, 218, 222)
+                record = {
+                    'sensor_model': 'PZEM-004T',
+                    'measure_unit': 'V',
+                    'device': f'PZEM_{randint(1, 9999):04d}',
+                    'location': 'Instalação',
+                    'data_type': 'Tensão',
+                    'data': round(self._apply_alerta(voltage), 5),
+                    'created_at': timestamps[i]
+                }
+                payload.append(record)
+                i += 1
+            else:
+                # 5% dos casos: criar evento gradual de alerta (rampa)
+                rampa_tam = np.random.randint(5, 15)  # duração do evento
+                if np.random.rand() < 0.5:
+                    # Rampa para baixo (até próximo de 198V)
+                    start = 220
+                    end = 198 + np.random.uniform(0, 2)
+                else:
+                    # Rampa para cima (até próximo de 242V)
+                    start = 220
+                    end = 242 - np.random.uniform(0, 2)
+                ramp = np.linspace(start, end, rampa_tam//2).tolist() + np.linspace(end, start, rampa_tam - rampa_tam//2).tolist()
+                for v in ramp:
+                    if i >= self.n_dados:
+                        break
+                    v_osc = v + np.random.normal(0, 0.7)  # pequena oscilação
+                    v_osc = np.clip(v_osc, min(198, v), max(242, v))
+                    record = {
+                        'sensor_model': 'PZEM-004T',
+                        'measure_unit': 'V',
+                        'device': f'PZEM_{randint(1, 9999):04d}',
+                        'location': 'Instalação',
+                        'data_type': 'Tensão',
+                        'data': round(self._apply_alerta(v_osc), 5),
+                        'created_at': timestamps[i]
+                    }
+                    payload.append(record)
+                    i += 1
 
         self.batch_insert(payload)
         return payload
