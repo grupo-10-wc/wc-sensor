@@ -43,27 +43,39 @@ class SimuladorSensor:
             return valor_base * np.random.uniform(0.1, 0.5)  # Simula valores muito baixos
         return valor_base  # Sem alerta
 
-    def shelly_em(self):
-        timestamps = self._generate_timestamps()
-        payload = []
+def shelly_em(self):
+    timestamps = self._generate_timestamps()
+    payload = []
 
-        for i in range(self.n_dados):
-            consumo = 1 + np.random.normal(0, 0.05)
-            consumo = self._apply_alerta(consumo)
+    ufs = [
+        "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA",
+        "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN",
+        "RS", "RO", "RR", "SC", "SP", "SE", "TO"
+    ]
 
-            record = {
-                'sensor_model': 'Shelly EM',
-                'measure_unit': 'kWh',
-                'device': f'Disjuntor Geral {randint(1, 9999):04d}',
-                'location': 'Quadro de Energia',
-                'data_type': 'Consumo de Energia',
-                'data': round(consumo, 5),
-                'created_at': timestamps[i]
-            }
-            payload.append(record)
+    media_consumo = 100  
+    desvio_padrao = 30
 
-        self.batch_insert(payload)
-        return payload
+    for i in range(self.n_dados):
+        consumo = np.random.normal(media_consumo, desvio_padrao)
+        consumo = max(consumo, 5)  # evita valores muito baixos
+        consumo = self._apply_alerta(consumo)
+
+        record = {
+            'sensor_model': 'Shelly EM',
+            'measure_unit': 'kWh',
+            'device': f'Disjuntor Geral {randint(1, 9999):04d}',
+            'location': 'Quadro de Energia',
+            'data_type': 'Consumo de Energia',
+            'uf': np.random.choice(ufs),  # adiciona UF aleatória
+            'data': round(consumo, 2),
+            'created_at': np.random.choice(timestamps)
+        }
+        payload.append(record)
+
+    self.batch_insert(payload)
+    return payload
+
 
     def sonoff_pow_r3(self):
         timestamps = self._generate_timestamps()
