@@ -52,13 +52,13 @@ class SimuladorSensor:
             consumo = self._apply_alerta(consumo)
 
             record = {
-                'sensor_model': 'Shelly EM',
-                'measure_unit': 'kWh',
-                'device': f'Disjuntor Geral {randint(1, 9999):04d}',
+                'sensorModel': 'Shelly EM',
+                'measureUnit': 'kWh',
+                'deviceId': f'Disjuntor Geral {randint(1, 9999):04d}',
                 'location': 'Quadro de Energia',
-                'data_type': 'Consumo de Energia',
+                'dataType': 'Consumo de Energia',
                 'data': round(consumo, 5),
-                'created_at': timestamps[i]
+                'ts': int(timestamps[i].timestamp())
             }
             payload.append(record)
 
@@ -74,13 +74,13 @@ class SimuladorSensor:
             power = self._apply_alerta(power)
 
             record = {
-                'sensor_model': 'Sonoff Pow R3',
-                'measure_unit': 'W',
-                'device': f'Sonoff_{randint(1, 9999):04d}',
+                'sensorModel': 'Sonoff Pow R3',
+                'measureUnit': 'W',
+                'deviceId': f'Sonoff_{randint(1, 9999):04d}',
                 'location': 'Tomada',
-                'data_type': 'Consumo de Energia',
+                'dataType': 'Consumo de Energia',
                 'data': round(power, 5),
-                'created_at': timestamps[i]
+                'ts': int(timestamps[i].timestamp())
             }
             payload.append(record)
 
@@ -98,13 +98,13 @@ class SimuladorSensor:
                 voltage = 220 + np.random.normal(0, 1.2)
                 voltage = np.clip(voltage, 218, 222)
                 record = {
-                    'sensor_model': 'PZEM-004T',
-                    'measure_unit': 'V',
-                    'device': f'PZEM_{randint(1, 9999):04d}',
+                    'sensorModel': 'PZEM-004T',
+                    'measureUnit': 'V',
+                    'deviceId': f'PZEM_{randint(1, 9999):04d}',
                     'location': 'Instalação',
-                    'data_type': 'Tensão',
+                    'dataType': 'Tensão',
                     'data': round(self._apply_alerta(voltage), 5),
-                    'created_at': timestamps[i]
+                    'ts': int(timestamps[i].timestamp())
                 }
                 payload.append(record)
                 i += 1
@@ -126,13 +126,13 @@ class SimuladorSensor:
                     v_osc = v + np.random.normal(0, 0.7)  # pequena oscilação
                     v_osc = np.clip(v_osc, min(198, v), max(242, v))
                     record = {
-                        'sensor_model': 'PZEM-004T',
-                        'measure_unit': 'V',
-                        'device': f'PZEM_{randint(1, 9999):04d}',
+                        'sensorModel': 'PZEM-004T',
+                        'measureUnit': 'V',
+                        'deviceId': f'PZEM_{randint(1, 9999):04d}',
                         'location': 'Instalação',
-                        'data_type': 'Tensão',
+                        'dataType': 'Tensão',
                         'data': round(self._apply_alerta(v_osc), 5),
-                        'created_at': timestamps[i]
+                        'ts': int(timestamps[i].timestamp())
                     }
                     payload.append(record)
                     i += 1
@@ -155,13 +155,13 @@ class SimuladorSensor:
                 temperature = 25 + np.random.normal(0, 2)  # Temperatura média de 25°C com desvio padrão de 2
                 temperature = self._apply_alerta(temperature)
                 record = {
-                    'sensor_model': 'hms_m21',
-                    'measure_unit': 'C',
-                    'device': device,
+                    'sensorModel': 'hms_m21',
+                    'measureUnit': 'C',
+                    'deviceId': device,
                     'location': location,
-                    'data_type': 'Temperatura',
+                    'dataType': 'Temperatura',
                     'data': round(temperature, 2),
-                    'created_at': timestamps[i]
+                    'ts': int(timestamps[i].timestamp())
                 }
                 payload.append(record)
 
@@ -193,16 +193,16 @@ class SimuladorSensor:
 
         fatores_potencia = [round(float(calcular_fator_potencia(V, I, ang)), 5) 
                         for V, I, ang in zip(tensoes, correntes, angulos_fase)]
-        device = f'Ar Condicionado{randint(1, 9999):04d}'
+        device = f'Ar Condicionado {randint(1, 9999):04d}'
         for i in range(self.n_dados):
             record = {
-                'sensor_model': 'Fluke 1735',
-                'measure_unit': 'kW',
-                'device': device,
+                'sensorModel': 'Fluke 1735',
+                'measureUnit': 'kW',
+                'deviceId': device,
                 'location': 'Sala de reuniões',
-                'data_type': 'Fator de Potência',
+                'dataType': 'Fator de Potência',
                 'data': fatores_potencia[i],
-                'created_at': timestamps[i]
+                'ts': int(timestamps[i].timestamp())
             }
             payload.append(record)
         self.batch_insert(payload)
@@ -225,13 +225,13 @@ class SimuladorSensor:
         
         for i in range(len(correntes)):
             record = {
-                'sensor_model': 'ct_clamp',
-                'measure_unit': 'A',
-                'device': device,
+                'sensorModel': 'ct_clamp',
+                'measureUnit': 'A',
+                'deviceId': device,
                 'location': 'Quadro de Energia',
-                'data_type': 'Corrente Elétrica',
+                'dataType': 'Corrente Elétrica',
                 'data': round(float(correntes[i]), 5),
-                'created_at': start_date + datetime.timedelta(minutes=i)
+                'ts': int((start_date + datetime.timedelta(minutes=i)).timestamp())
             }
             payload.append(record)
         
@@ -269,7 +269,7 @@ class SimuladorSensor:
         # return {'status': 'success', 'device': device, 'n_samples': len(payload), 'alerts': len(alert_times)}
 
     def plot_dados(self, dados, titulo, eixo_x, eixo_y, filename):
-        timestamps = [record['created_at'] for record in dados]
+        timestamps = [datetime.datetime.fromtimestamp(record['ts']) for record in dados]
         valores = [record['data'] for record in dados]
 
         plt.figure(figsize=(10, 6))

@@ -1,5 +1,5 @@
 import os
-from sqlalchemy import MetaData, Column, Table, create_engine, INTEGER, String, Float, DateTime
+from sqlalchemy import MetaData, Column, Table, create_engine, INTEGER, String, Float, TIMESTAMP, BIGINT
 from sqlalchemy.orm import sessionmaker
 
 class Database:
@@ -27,13 +27,13 @@ class Database:
     def sensores(self) -> Table:
         return Table('sensores', self.meta,
                      Column('id', INTEGER, primary_key=True),
-                     Column('sensor_model', String),
-                     Column('measure_unit', String),
-                     Column('device', String),
+                     Column('sensorModel', String),
+                     Column('measureUnit', String),
+                     Column('deviceId', String),
                      Column('location', String),
-                     Column('data_type', String, index=True),
+                     Column('dataType', String, index=True),
                      Column('data', Float),
-                     Column('created_at', DateTime),
+                     Column('ts', BIGINT),
                      extend_existing=True
                      )
 

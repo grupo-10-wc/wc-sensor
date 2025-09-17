@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import numpy as np
 import boto3
-
+import requests
 from typing import Callable 
 from database import Database
 from dotenv import load_dotenv
@@ -20,6 +20,7 @@ from azure.storage.blob import BlobServiceClient
 
 
 load_dotenv()
+BASE_URL = os.getenv("BASE_URL")
 
 
 class AlgasBenchmark:
@@ -305,12 +306,12 @@ class AlgasBenchmark:
 
     def run(self):
         cenarios = [
+            {"cenario": 4, "sensor_func": self.simulador.fluke_1735},
             {"cenario": 1, "sensor_func": self.simulador.shelly_em},
             {"cenario": 2, "sensor_func": self.simulador.sonoff_pow_r3},
             {"cenario": 3, "sensor_func": self.simulador.pzem_004t},
-            {"cenario": 4, "sensor_func": self.simulador.fluke_1735},
             {"cenario": 5, "sensor_func": self.simulador.hms_m21},
-            {"cenario": 6, "sensor_func": self.simulador.ct_clamp}
+            {"cenario": 6, "sensor_func": self.simulador.ct_clamp},
         ]
 
         # fig_tempo_blocos, ax_tempo_blocos = plt.subplots(figsize=(10, 6))
@@ -323,29 +324,31 @@ class AlgasBenchmark:
         # ax_mem_blocos.set_yscale('log')
 
         # df_benchmark = pd.DataFrame()
+        
         df_dados = pd.DataFrame()
 
         for cenario in cenarios:
             print(f"Executando benchmark para o cenário {cenario['cenario']}...")
             df_cenario, dados = self.benchmark_sensor(cenario["sensor_func"], cenario["cenario"])
             df_dados = pd.concat([df_dados, pd.DataFrame(dados)])
-            # df_benchmark = pd.concat([df_benchmark, df_cenario], ignore_index=True)
+            requests.post(f"{BASE_URL}/sensores", json=dados)
+        #     # df_benchmark = pd.concat([df_benchmark, df_cenario], ignore_index=True)
 
-            # ax_tempo_blocos.plot(df_cenario['tempo'], df_cenario['blocos'], label=f'Cenário {cenario["cenario"]}', marker='o')
-            # ax_mem_blocos.plot(df_cenario['memoria'], df_cenario['blocos'], label=f'Cenário {cenario["cenario"]}', marker='o')
+        #     # ax_tempo_blocos.plot(df_cenario['tempo'], df_cenario['blocos'], label=f'Cenário {cenario["cenario"]}', marker='o')
+        #     # ax_mem_blocos.plot(df_cenario['memoria'], df_cenario['blocos'], label=f'Cenário {cenario["cenario"]}', marker='o')
 
-        # Salva os resultados do benchmark no banco de dados
-        # self.db.db_execute(self.teste_carga_table.insert().values(df_benchmark.to_dict("records")), commit=True)
-        df_dados.to_csv("output/csv/dados.csv", index=False)
-        try:
-            # client = self.open_iot_hub_connection()
-            self.send_to_blob(df_dados.to_dict("records"))
-            print("\033[32mDados enviados para o Azure com sucesso!\033[0m")
+        # # Salva os resultados do benchmark no banco de dados
+        # # self.db.db_execute(self.teste_carga_table.insert().values(df_benchmark.to_dict("records")), commit=True)
+        # df_dados.to_csv("output/csv/dados.csv", index=False)
+        # try:
+        #     # client = self.open_iot_hub_connection()
+        #     self.send_to_blob(df_dados.to_dict("records"))
+        #     print("\033[32mDados enviados para o Azure com sucesso!\033[0m")
             # client.disconnect()
-        except ValueError as e:
-            print(f"\033[31m{e} sem acesso a Azure !!!\033[0m")
-        except Exception as e:
-            print(f"Erro ao enviar dados para o Azure: {e}")
+        # except ValueError as e:
+        #     print(f"\033[31m{e} sem acesso a Azure !!!\033[0m")
+        # except Exception as e:
+        #     print(f"Erro ao enviar dados para o Azure: {e}")
         # Configura os gráficos
         # ax_tempo_blocos.set_xlabel('Tempo de execução (segundos)')
         # ax_tempo_blocos.set_ylabel('Blocos processados')
