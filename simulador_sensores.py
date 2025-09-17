@@ -47,8 +47,18 @@ class SimuladorSensor:
         timestamps = self._generate_timestamps()
         payload = []
 
+        ufs = [
+            "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA",
+            "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN",
+            "RS", "RO", "RR", "SC", "SP", "SE", "TO"
+        ]
+
+        media_consumo = 100  
+        desvio_padrao = 30
+
         for i in range(self.n_dados):
-            consumo = 1 + np.random.normal(0, 0.05)
+            consumo = np.random.normal(media_consumo, desvio_padrao)
+            consumo = max(consumo, 5)  # evita valores muito baixos
             consumo = self._apply_alerta(consumo)
 
             record = {
@@ -57,13 +67,14 @@ class SimuladorSensor:
                 'deviceId': f'Disjuntor Geral {randint(1, 9999):04d}',
                 'location': 'Quadro de Energia',
                 'dataType': 'Consumo de Energia',
-                'data': round(consumo, 5),
+                'data': round(consumo, 2),
                 'ts': int(timestamps[i].timestamp())
             }
             payload.append(record)
 
         self.batch_insert(payload)
         return payload
+
 
     def sonoff_pow_r3(self):
         timestamps = self._generate_timestamps()
