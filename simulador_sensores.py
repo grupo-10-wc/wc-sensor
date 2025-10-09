@@ -7,19 +7,11 @@ from database import Database
 
 class SimuladorSensor:
     def __init__(self, db: Database, n_dados: int, intervalo_ms: int, alerta: str = "nenhum"):
-        """
-        Inicializa o simulador de sensores.
-
-        :param db: Instância da classe Database.
-        :param n_dados: Número de dados a serem gerados.
-        :param intervalo_ms: Intervalo em milissegundos entre os dados.
-        :param alerta: Tipo de alerta ("alto", "baixo", "nenhum").
-        """
         self.db = db
         self.sensores = db.sensores()
         self.n_dados = n_dados
         self.intervalo_ms = intervalo_ms
-        self.alerta = alerta.lower()  # Normaliza o valor para minúsculas
+        self.alerta = alerta.lower()
 
     def batch_insert(self, records, batch_size=1000):
         for i in range(0, len(records), batch_size):

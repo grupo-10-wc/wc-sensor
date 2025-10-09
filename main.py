@@ -1,6 +1,6 @@
-from algas_sensores import AlgasBenchmark
+from algas_sensores import AlgasSimulador
 
 
 if __name__ == "__main__":
-    benchmark = AlgasBenchmark()
+    benchmark = AlgasSimulador()
     benchmark.run()
