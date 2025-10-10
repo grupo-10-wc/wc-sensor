@@ -200,7 +200,7 @@ class SimuladorSensor:
         for i in range(self.n_dados):
             record = {
                 'sensorModel': 'Fluke 1735',
-                'measureUnit': 'kW',
+                'measureUnit': '%',
                 'deviceId': device,
                 'location': 'Sala de reuniões',
                 'dataType': 'Fator de Potência',
