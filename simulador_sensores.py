@@ -19,8 +19,9 @@ class SimuladorSensor:
             self.db.db_execute(self.sensores.insert().values(batch), commit=True)
 
     def _generate_timestamps(self):
-        start_time = datetime.datetime.now() - datetime.timedelta(days=60)
-        return [start_time + datetime.timedelta(milliseconds=i * self.intervalo_ms) for i in range(self.n_dados)]
+        start_time = (datetime.datetime.now() - datetime.timedelta(days=60)).replace(minute=0, second=0, microsecond=0)
+        return [start_time + datetime.timedelta(hours=i) for i in range(self.n_dados)]
+
 
     def _apply_alerta(self, valor_base):
         """
@@ -60,7 +61,7 @@ class SimuladorSensor:
                 'location': 'Quadro de Energia',
                 'dataType': 'Consumo de Energia',
                 'data': round(consumo, 2),
-                'ts': int(timestamps[i].timestamp())
+                'ts': timestamps[i].strftime('%Y-%m-%d %H:%M:%S')
             }
             payload.append(record)
 
@@ -83,7 +84,7 @@ class SimuladorSensor:
                 'location': 'Tomada',
                 'dataType': 'Consumo de Energia',
                 'data': round(power, 5),
-                'ts': int(timestamps[i].timestamp())
+                'ts': timestamps[i].strftime('%Y-%m-%d %H:%M:%S')
             }
             payload.append(record)
 
@@ -107,7 +108,7 @@ class SimuladorSensor:
                     'location': 'Instalação',
                     'dataType': 'Tensão',
                     'data': round(self._apply_alerta(voltage), 5),
-                    'ts': int(timestamps[i].timestamp())
+                    'ts': timestamps[i].strftime('%Y-%m-%d %H:%M:%S')
                 }
                 payload.append(record)
                 i += 1
@@ -147,15 +148,15 @@ class SimuladorSensor:
         n_sensores = 5
         payload = []
 
+        start_time = (datetime.datetime.now() - datetime.timedelta(days=60)).replace(minute=0, second=0, microsecond=0)
+        timestamps = [start_time + datetime.timedelta(hours=i) for i in range(self.n_dados)]
+
         for sensor_id in range(1, n_sensores + 1):
             device = f'HMS_{sensor_id:04d}'
             location = f'Quadro de Energia {sensor_id}'
-            timestamps = [
-                datetime.datetime.now() - datetime.timedelta(days=60) + datetime.timedelta(milliseconds=i * self.intervalo_ms)
-                for i in range(self.n_dados)
-            ]
+
             for i in range(self.n_dados):
-                temperature = 25 + np.random.normal(0, 2)  # Temperatura média de 25°C com desvio padrão de 2
+                temperature = 25 + np.random.normal(0, 2)
                 temperature = self._apply_alerta(temperature)
                 record = {
                     'sensorModel': 'hms_m21',
@@ -164,12 +165,14 @@ class SimuladorSensor:
                     'location': location,
                     'dataType': 'Temperatura',
                     'data': round(temperature, 2),
-                    'ts': int(timestamps[i].timestamp())
+                    'ts': timestamps[i].strftime('%Y-%m-%d %H:%M:%S')
                 }
                 payload.append(record)
 
         self.batch_insert(payload)
         return payload
+
+
 
     def fluke_1735(self):
         def calcular_fator_potencia(tensao, corrente, angulo_fase):
@@ -205,7 +208,7 @@ class SimuladorSensor:
                 'location': 'Sala de reuniões',
                 'dataType': 'Fator de Potência',
                 'data': fatores_potencia[i],
-                'ts': int(timestamps[i].timestamp())
+                'ts': timestamps[i].strftime('%Y-%m-%d %H:%M:%S')
             }
             payload.append(record)
         self.batch_insert(payload)
@@ -215,18 +218,19 @@ class SimuladorSensor:
         alert_threshold: float = 7.0
         alert_threshold_low: float = 3.0
         np.random.seed(2025)
-        
+
         ruido_corrente = np.random.normal(0, 30, self.n_dados)
         window = int(self.n_dados / 10 / 2)
         ruido_corrente = np.convolve(ruido_corrente, np.ones(window)/window, mode='same')
-        
+
         correntes = 5 + ruido_corrente
         device = f'CT Clamp {randint(1, 9999):04d}'
-        
+
         payload = []
-        start_date = datetime.datetime.now() - datetime.timedelta(days=60)
-        
+        start_time = (datetime.datetime.now() - datetime.timedelta(days=60)).replace(minute=0, second=0, microsecond=0)
+
         for i in range(len(correntes)):
+            ts = start_time + datetime.timedelta(hours=i)
             record = {
                 'sensorModel': 'ct_clamp',
                 'measureUnit': 'A',
@@ -234,12 +238,14 @@ class SimuladorSensor:
                 'location': 'Quadro de Energia',
                 'dataType': 'Corrente Elétrica',
                 'data': round(float(correntes[i]), 5),
-                'ts': int((start_date + datetime.timedelta(minutes=i)).timestamp())
+                'ts': ts.strftime('%Y-%m-%d %H:%M:%S')
             }
             payload.append(record)
-        
+
         self.batch_insert(payload)
         return payload
+
+
         
         # result = self.get_data_by_device(device)
         
@@ -272,7 +278,7 @@ class SimuladorSensor:
         # return {'status': 'success', 'device': device, 'n_samples': len(payload), 'alerts': len(alert_times)}
 
     def plot_dados(self, dados, titulo, eixo_x, eixo_y, filename):
-        timestamps = [datetime.datetime.fromtimestamp(record['ts']) for record in dados]
+        timestamps = [datetime.datetime.strptime(record['ts'], '%Y-%m-%d %H:%M:%S') for record in dados]
         valores = [record['data'] for record in dados]
 
         plt.figure(figsize=(10, 6))
