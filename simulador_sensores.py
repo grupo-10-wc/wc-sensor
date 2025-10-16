@@ -136,7 +136,7 @@ class SimuladorSensor:
                         'location': 'Instalação',
                         'dataType': 'Tensão',
                         'data': round(self._apply_alerta(v_osc), 5),
-                        'ts': int(timestamps[i].timestamp())
+                        'ts': timestamps[i].strftime('%Y-%m-%d %H:%M:%S')  
                     }
                     payload.append(record)
                     i += 1
