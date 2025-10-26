@@ -4,10 +4,9 @@ import csv
 import time
 import pandas as pd
 import boto3
-from typing import Callable 
+from typing import Callable
 from database import Database
 from dotenv import load_dotenv
-# from memory_profiler import memory_usage  #COMENTADO(F44 44F, 4F4) - import não utilizado
 from simulador_sensores import SimuladorSensor
 
 
@@ -17,85 +16,89 @@ BASE_URL = os.getenv("BASE_URL")
 
 class AlgasSimulador:
     def __init__(self):
-        # Inicializa as pastas de output
         os.mkdir('output') if not os.path.exists('output') else None
         os.mkdir('output/plot') if not os.path.exists('output/plot') else None
         os.mkdir('output/csv') if not os.path.exists('output/csv') else None
-        
-        # Inicializa o banco de dados (para compatibilidade com o simulador)
+
         self.db = Database(db_name="algas")
         self.db.create_table()
-        
-        # Inicializa o simulador de sensores
-        self.simulador = SimuladorSensor(self.db, n_dados=500, intervalo_ms=1000*60*30, alerta="nenhum")
-        
 
+        self.simulador = SimuladorSensor(
+            self.db,
+            n_dados=500,
+            intervalo_ms=1000 * 60 * 30,
+            alerta="nenhum")
 
     def send_to_s3(self, records: list[dict]):
         try:
-            # Convert records to DataFrame
             df = pd.DataFrame(records)
             if 'created_at' in df.columns:
-                df['created_at'] = pd.to_datetime(df['created_at']).dt.strftime("%Y-%m-%d %H:%M:%S")
-            
-            # Create parquet file in memory
+                df['created_at'] = pd.to_datetime(
+                    df['created_at']).dt.strftime("%Y-%m-%d %H:%M:%S")
+
             parquet_buffer = io.BytesIO()
             df.to_parquet(parquet_buffer, index=False)
             parquet_buffer.seek(0)
-            
-            # Initialize S3 client
             s3_client = boto3.client(
                 's3',
                 aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
                 aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
                 region_name=os.getenv("AWS_REGION", "us-east-1")
             )
-            
+
             timestamp = time.strftime("%Y%m%d%H%M%S")
             object_key = f"dados/dados_{timestamp}.parquet"
             bucket_name = os.getenv("AWS_S3_BUCKET_NAME", "algas-sensor-data")
-            
+
             s3_client.upload_fileobj(
                 parquet_buffer,
                 bucket_name,
                 object_key
             )
-            
-            print(f"\033[32mParquet file uploaded to S3: s3://{bucket_name}/{object_key}\033[0m")
-            
+
+            print(
+                f"\033[32mParquet file uploaded to S3: s3://{bucket_name}/{object_key}\033[0m")
+
         except Exception as e:
             print(f"\033[31mError uploading parquet to S3: {e}\033[0m")
 
-
-
-    def simular_dados_sensor(self, sensor_func: Callable, cenario: int):
+    def simular_dados_sensor(
+        self,
+        sensor_func: Callable,
+        device:str,
+        location:str
+    ):
         """
         Executa a simulação de dados para uma função de sensor.
- 
+
         :param sensor_func: Função de simulação de sensor a ser executada.
         :param cenario: Identificação do cenário.
         :return: Dados simulados do sensor.
         """
-        sensor_csv_filename = f"output/csv/cenario_{sensor_func.__name__}_sensores.csv"
+        sensor_csv_filename = f"output/csv/cenario_{
+            sensor_func.__name__}_sensores.csv"
 
         with open(sensor_csv_filename, 'w', newline='') as sensor_csvfile:
             sensor_writer = csv.writer(sensor_csvfile)
-            sensor_writer.writerow(['sensor_model', 'measure_unit', 'device', 'location', 'data_type', 'data', 'created_at'])
+            sensor_writer.writerow(['sensor_model',
+                                    'measure_unit',
+                                    'device',
+                                    'location',
+                                    'data_type',
+                                    'data',
+                                    'created_at'])
 
-            print(f"Iniciando simulação para o cenário {cenario}...")
+            print(f"Iniciando simulação para o sensor {sensor_func.__name__}...")
+            dados = sensor_func(device, location)
 
-            # Executa a simulação do sensor
-            dados = sensor_func()
-
-            # Salva os dados dos sensores no CSV
             for record in dados:
                 sensor_writer.writerow(record.values())
 
-            print(f"Simulação do cenário {cenario} concluída.")
+            print(f"Simulação do cenário {sensor_func.__name__} concluída.")
 
         return dados
 
-    def enviar_csv_para_s3(self, bucket_name='', prefixo='csv/'):        
+    def enviar_csv_para_s3(self, bucket_name='', prefixo='csv/'):
         s3 = boto3.client('s3')
         folder_path = 'output/csv'
 
@@ -113,42 +116,67 @@ class AlgasSimulador:
                 except Exception as e:
                     print(f"Erro ao enviar {filename} para S3: {e}")
 
-
     def run(self):
         """
         Executa a simulação de dados para todos os cenários de sensores.
         """
         cenarios = [
-            {"cenario": 4, "sensor_func": self.simulador.fluke_1735},
-            {"cenario": 1, "sensor_func": self.simulador.shelly_em},
-            {"cenario": 2, "sensor_func": self.simulador.sonoff_pow_r3},
-            {"cenario": 3, "sensor_func": self.simulador.pzem_004t},
-            {"cenario": 5, "sensor_func": self.simulador.hms_m21},
-            {"cenario": 6, "sensor_func": self.simulador.ct_clamp},
-        ]
+        # FLUKE 1735 — medidor trifásico para cargas grandes
+        {"sensor_func": self.simulador.fluke_1735, "device": "Ar-Condicionado 18.000 BTU", "location": "Sala de Reuniões"},
+        {"sensor_func": self.simulador.fluke_1735, "device": "Ar-Condicionado 15.000 BTU", "location": "Auditório"},
+        {"sensor_func": self.simulador.fluke_1735, "device": "Ar-Condicionado 12.000 BTU", "location": "Sala de Servidores"},
+        {"sensor_func": self.simulador.fluke_1735, "device": "Aquecedor de Ambiente", "location": "Depósito"},
+
+        # SHELLY EM — monitoramento de circuito geral ou setorial
+        {"sensor_func": self.simulador.shelly_em, "device": "Disjuntor Geral", "location": "Quadro de Distribuição"},
+        {"sensor_func": self.simulador.shelly_em, "device": "Circuito de Iluminação", "location": "Corredor Principal"},
+        {"sensor_func": self.simulador.shelly_em, "device": "Circuito de Tomadas", "location": "Sala de Engenharia"},
+        {"sensor_func": self.simulador.shelly_em, "device": "Painel de Energia", "location": "Subestação Interna"},
+
+        # SONOFF POW R3 — medição direta em cargas de tomada
+        {"sensor_func": self.simulador.sonoff_pow_r3, "device": "Lâmpada Incandescente - 100 W", "location": "Escritório"},
+        {"sensor_func": self.simulador.sonoff_pow_r3, "device": "Multiprocessador", "location": "Copa"},
+        {"sensor_func": self.simulador.sonoff_pow_r3, "device": "Ventilador Pequeno", "location": "Sala de Atendimento"},
+        {"sensor_func": self.simulador.sonoff_pow_r3, "device": "Impressora", "location": "Área Administrativa"},
+
+        # PZEM-004T — sensor monofásico de energia para cargas médias
+        {"sensor_func": self.simulador.pzem_004t, "device": "Aquecedor de Ambiente", "location": "Sala Técnica"},
+        {"sensor_func": self.simulador.pzem_004t, "device": "Ar-Condicionado 10.000 BTU", "location": "Escritório"},
+        {"sensor_func": self.simulador.pzem_004t, "device": "Circulador de Ar Grande", "location": "Galpão de Produção"},
+        {"sensor_func": self.simulador.pzem_004t, "device": "TV em Cores - 20", "location": "Sala de Espera"},
+
+        # HMS M21 — medidor modular de energia, versátil para cargas diversas
+        {"sensor_func": self.simulador.hms_m21, "device": "TV em Cores - 29", "location": "Sala de Descanso"},
+        {"sensor_func": self.simulador.hms_m21, "device": "TV em Cores - 14", "location": "Recepção"},
+        {"sensor_func": self.simulador.hms_m21, "device": "Lâmpada Incandescente - 60 W", "location": "Corredor"},
+        {"sensor_func": self.simulador.hms_m21, "device": "Multiprocessador", "location": "Copa"},
+
+        # CT CLAMP — transformador de corrente, ideal para monitoramento de ramais e cargas pesadas
+        {"sensor_func": self.simulador.ct_clamp, "device": "Ar-Condicionado 12.000 BTU", "location": "Recepção"},
+        {"sensor_func": self.simulador.ct_clamp, "device": "Ar-Condicionado 7.500 BTU", "location": "Sala de Supervisão"},
+        {"sensor_func": self.simulador.ct_clamp, "device": "Circulador de Ar Pequeno/Médio", "location": "Oficina"},
+        {"sensor_func": self.simulador.ct_clamp, "device": "Ventilador Pequeno", "location": "Área de Produção"}
+    ]
+
 
         df_dados = pd.DataFrame()
 
         for cenario in cenarios:
-            print(f"Executando simulação para o cenário {cenario['cenario']}...")
-            dados = self.simular_dados_sensor(cenario["sensor_func"], cenario["cenario"])
+            print(f"Executando simulação para o sensor {cenario['sensor_func'].__name__}...")
+            dados = self.simular_dados_sensor(**cenario)
             df_dados = pd.concat([df_dados, pd.DataFrame(dados)])
 
-        # Salva todos os dados em um arquivo CSV consolidado
         df_dados.to_csv("output/csv/dados.csv", index=False)
-        
+
         try:
-            # Envia dados para S3
             self.send_to_s3(df_dados.to_dict("records"))
             print("\033[32mDados enviados para o S3 com sucesso!\033[0m")
         except ValueError as e:
             print(f"\033[31m{e} sem acesso ao S3 !!!\033[0m")
         except Exception as e:
             print(f"Erro ao enviar dados para o S3: {e}")
-            
-        print("Simulação de todos os cenários concluída!")
-            
 
+        print("Simulação de todos os cenários concluída!")
 
 
 if __name__ == "__main__":
