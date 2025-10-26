@@ -21,7 +21,7 @@ class SimuladorSensor:
 
     def _generate_timestamps(self):
         start_time = datetime.datetime.now().replace(
-            hour=0, minute=0, second=0, microsecond=0)
+            hour=0, minute=0, second=0, microsecond=0) - datetime.timedelta(days=1)
         return [
             start_time +
             datetime.timedelta(
