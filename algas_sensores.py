@@ -70,10 +70,10 @@ class AlgasSimulador:
         location:str
     ):
         """
-        Executa a simulação de dados para uma função de sensor.
+        Executa a simulacao de dados para uma funcao de sensor.
 
-        :param sensor_func: Função de simulação de sensor a ser executada.
-        :param cenario: Identificação do cenário.
+        :param sensor_func: Funcao de simulacao de sensor a ser executada.
+        :param cenario: Identificacao do cenArio.
         :return: Dados simulados do sensor.
         """
         sensor_csv_filename = f"output/csv/cenario_{
@@ -89,13 +89,13 @@ class AlgasSimulador:
                                     'data',
                                     'created_at'])
 
-            print(f"Iniciando simulação para o sensor {sensor_func.__name__}...")
+            print(f"Iniciando simulacao para o sensor {sensor_func.__name__}...")
             dados = sensor_func(device, location)
 
             for record in dados:
                 sensor_writer.writerow(record.values())
 
-            print(f"Simulação do cenário {sensor_func.__name__} concluída.")
+            print(f"Simulacao do cenArio {sensor_func.__name__} concluída.")
 
         return dados
 
@@ -104,7 +104,7 @@ class AlgasSimulador:
         folder_path = 'output/csv'
 
         if not os.path.exists(folder_path):
-            print(f"Pasta {folder_path} não existe.")
+            print(f"Pasta {folder_path} nao existe.")
             return
 
         for filename in os.listdir(folder_path):
@@ -120,51 +120,51 @@ class AlgasSimulador:
 
     def run(self):
         """
-        Executa a simulação de dados para todos os cenários de sensores.
+        Executa a simulacao de dados para todos os cenArios de sensores.
         """
         cenarios = [
-        # FLUKE 1735 — medidor trifásico para cargas grandes
-        {"sensor_func": self.simulador.fluke_1735, "device": "Ar-Condicionado 18.000 BTU", "location": "Sala de Reuniões"},
-        {"sensor_func": self.simulador.fluke_1735, "device": "Ar-Condicionado 15.000 BTU", "location": "Auditório"},
+        # FLUKE 1735 — medidor trifAsico para cargas grandes
+        {"sensor_func": self.simulador.fluke_1735, "device": "Ar-Condicionado 18.000 BTU", "location": "Sala de Reunioes"},
+        {"sensor_func": self.simulador.fluke_1735, "device": "Ar-Condicionado 15.000 BTU", "location": "Auditorio"},
         {"sensor_func": self.simulador.fluke_1735, "device": "Ar-Condicionado 12.000 BTU", "location": "Sala de Servidores"},
-        {"sensor_func": self.simulador.fluke_1735, "device": "Aquecedor de Ambiente", "location": "Depósito"},
+        {"sensor_func": self.simulador.fluke_1735, "device": "Aquecedor de Ambiente", "location": "Deposito"},
 
         # SHELLY EM — monitoramento de circuito geral ou setorial
-        {"sensor_func": self.simulador.shelly_em, "device": "Disjuntor Geral", "location": "Quadro de Distribuição"},
-        {"sensor_func": self.simulador.shelly_em, "device": "Circuito de Iluminação", "location": "Corredor Principal"},
+        {"sensor_func": self.simulador.shelly_em, "device": "Disjuntor Geral", "location": "Quadro de Distribuicao"},
+        {"sensor_func": self.simulador.shelly_em, "device": "Circuito de Iluminacao", "location": "Corredor Principal"},
         {"sensor_func": self.simulador.shelly_em, "device": "Circuito de Tomadas", "location": "Sala de Engenharia"},
-        {"sensor_func": self.simulador.shelly_em, "device": "Painel de Energia", "location": "Subestação Interna"},
+        {"sensor_func": self.simulador.shelly_em, "device": "Painel de Energia", "location": "Subestacao Interna"},
 
-        # SONOFF POW R3 — medição direta em cargas de tomada
-        {"sensor_func": self.simulador.sonoff_pow_r3, "device": "Lâmpada Incandescente - 100 W", "location": "Escritório"},
+        # SONOFF POW R3 — medicao direta em cargas de tomada
+        {"sensor_func": self.simulador.sonoff_pow_r3, "device": "Lâmpada Incandescente - 100 W", "location": "Escritorio"},
         {"sensor_func": self.simulador.sonoff_pow_r3, "device": "Multiprocessador", "location": "Copa"},
         {"sensor_func": self.simulador.sonoff_pow_r3, "device": "Ventilador Pequeno", "location": "Sala de Atendimento"},
-        {"sensor_func": self.simulador.sonoff_pow_r3, "device": "Impressora", "location": "Área Administrativa"},
+        {"sensor_func": self.simulador.sonoff_pow_r3, "device": "Impressora", "location": "Area Administrativa"},
 
-        # PZEM-004T — sensor monofásico de energia para cargas médias
+        # PZEM-004T — sensor monofAsico de energia para cargas médias
         {"sensor_func": self.simulador.pzem_004t, "device": "Aquecedor de Ambiente", "location": "Sala Técnica"},
-        {"sensor_func": self.simulador.pzem_004t, "device": "Ar-Condicionado 10.000 BTU", "location": "Escritório"},
-        {"sensor_func": self.simulador.pzem_004t, "device": "Circulador de Ar Grande", "location": "Galpão de Produção"},
+        {"sensor_func": self.simulador.pzem_004t, "device": "Ar-Condicionado 10.000 BTU", "location": "Escritorio"},
+        {"sensor_func": self.simulador.pzem_004t, "device": "Circulador de Ar Grande", "location": "Galpao de Producao"},
         {"sensor_func": self.simulador.pzem_004t, "device": "TV em Cores - 20", "location": "Sala de Espera"},
 
-        # HMS M21 — medidor modular de energia, versátil para cargas diversas
+        # HMS M21 — medidor modular de energia, versAtil para cargas diversas
         {"sensor_func": self.simulador.hms_m21, "device": "TV em Cores - 29", "location": "Sala de Descanso"},
-        {"sensor_func": self.simulador.hms_m21, "device": "TV em Cores - 14", "location": "Recepção"},
+        {"sensor_func": self.simulador.hms_m21, "device": "TV em Cores - 14", "location": "Recepcao"},
         {"sensor_func": self.simulador.hms_m21, "device": "Lâmpada Incandescente - 60 W", "location": "Corredor"},
         {"sensor_func": self.simulador.hms_m21, "device": "Multiprocessador", "location": "Copa"},
 
         # CT CLAMP — transformador de corrente, ideal para monitoramento de ramais e cargas pesadas
-        {"sensor_func": self.simulador.ct_clamp, "device": "Ar-Condicionado 12.000 BTU", "location": "Recepção"},
-        {"sensor_func": self.simulador.ct_clamp, "device": "Ar-Condicionado 7.500 BTU", "location": "Sala de Supervisão"},
+        {"sensor_func": self.simulador.ct_clamp, "device": "Ar-Condicionado 12.000 BTU", "location": "Recepcao"},
+        {"sensor_func": self.simulador.ct_clamp, "device": "Ar-Condicionado 7.500 BTU", "location": "Sala de Supervisao"},
         {"sensor_func": self.simulador.ct_clamp, "device": "Circulador de Ar Pequeno/Médio", "location": "Oficina"},
-        {"sensor_func": self.simulador.ct_clamp, "device": "Ventilador Pequeno", "location": "Área de Produção"}
+        {"sensor_func": self.simulador.ct_clamp, "device": "Ventilador Pequeno", "location": "Area de Producao"}
     ]
 
 
         df_dados = pd.DataFrame()
 
         for cenario in cenarios:
-            print(f"Executando simulação para o sensor {cenario['sensor_func'].__name__}...")
+            print(f"Executando simulacao para o sensor {cenario['sensor_func'].__name__}...")
             dados = self.simular_dados_sensor(**cenario)
             df_dados = pd.concat([df_dados, pd.DataFrame(dados)])
 
@@ -178,7 +178,7 @@ class AlgasSimulador:
         except Exception as e:
             print(f"Erro ao enviar dados para o S3: {e}")
 
-        print("Simulação de todos os cenários concluída!")
+        print("Simulacao de todos os cenArios concluída!")
 
 
 if __name__ == "__main__":
