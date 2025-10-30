@@ -1,3 +1,4 @@
+import pdb
 import os
 import io
 import csv
@@ -8,7 +9,7 @@ from typing import Callable
 from database import Database
 from dotenv import load_dotenv
 from simulador_sensores import SimuladorSensor
-
+import datetime
 
 load_dotenv()
 BASE_URL = os.getenv("BASE_URL")
@@ -36,9 +37,9 @@ class AlgasSimulador:
                 df['created_at'] = pd.to_datetime(
                     df['created_at']).dt.strftime("%Y-%m-%d %H:%M:%S")
 
-            parquet_buffer = io.BytesIO()
-            df.to_parquet(parquet_buffer, index=False)
-            parquet_buffer.seek(0)
+            csv_buffer = io.BytesIO()
+            df.to_csv(csv_buffer, index=False)
+            csv_buffer.seek(0)
             s3_client = boto3.client(
                 's3',
                 aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
@@ -46,12 +47,12 @@ class AlgasSimulador:
                 region_name=os.getenv("AWS_REGION", "us-east-1")
             )
 
-            timestamp = time.strftime("%Y%m%d%H%M%S")
-            object_key = f"dados/dados_{timestamp}.parquet"
-            bucket_name = os.getenv("AWS_S3_BUCKET_NAME", "algas-sensor-data")
+            timestamp = (datetime.date.today()-datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+            object_key = f"{timestamp}/dados.csv"
+            bucket_name = os.getenv("AWS_S3_BUCKET_NAME", "raw-wattech10")
 
             s3_client.upload_fileobj(
-                parquet_buffer,
+                csv_buffer,
                 bucket_name,
                 object_key
             )
@@ -107,6 +108,7 @@ class AlgasSimulador:
             return
 
         for filename in os.listdir(folder_path):
+            pdb.set_trace()
             if filename.endswith(".csv"):
                 local_path = os.path.join(folder_path, filename)
                 s3_key = f"{prefixo}{filename}"
@@ -166,7 +168,7 @@ class AlgasSimulador:
             dados = self.simular_dados_sensor(**cenario)
             df_dados = pd.concat([df_dados, pd.DataFrame(dados)])
 
-        df_dados.to_csv("output/csv/dados.csv", index=False)
+        df_dados.to_csv("output/csv/dados.csv", index=False, sep=';')
 
         try:
             self.send_to_s3(df_dados.to_dict("records"))
